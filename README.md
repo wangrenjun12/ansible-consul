@@ -75,6 +75,443 @@ This role does not fully support the limit option (`ansible -l`) to limit the ho
 Undefined is not JSON serializable.
 ```
 
+## Consul Snapshot Agent
+
+_Consul snapshot agent takes backup snaps on a set interval and stores them. Must have enterprise_
+
+### `consul_snapshot`
+
+- Bool, true will setup and start snapshot agent (enterprise only)
+- Default value: false
+
+### `consul_snapshot_storage`
+
+- Location snapshots will be stored. NOTE: path must end in snaps
+- Default value: `{{ consul_config_path }}/snaps`
+
+### `consul_snapshot_interval`
+
+- Default value: 1h
+
+### `consul_snapshot_retain`
+
+## OS and Distribution Variables
+
+The `consul` binary works on most Linux platforms and is not distribution
+specific. However, some distributions require installation of specific OS
+packages with different package names.
+
+### `consul_centos_pkg`
+
+- Consul package filename
+- Default value: `{{ consul_version }}_linux_amd64.zip`
+
+### `consul_centos_url`
+
+- Consul package download URL
+- Default value: `{{ consul_zip_url }}`
+
+### `consul_centos_sha256`
+
+- Consul download SHA256 summary
+- Default value: SHA256 summary
+
+### `consul_centos_os_packages`
+
+- List of OS packages to install
+- Default value: list
+
+### `consul_debian_pkg`
+
+- Consul package filename
+- Default value: `{{ consul_version }}_linux_amd64.zip`
+
+### `consul_debian_url`
+
+- Consul package download URL
+- Default value: `{{ consul_zip_url }}`
+
+### `consul_debian_sha256`
+
+- Consul download SHA256 summary
+- Default value: SHA256 SUM
+
+### `consul_debian_os_packages`
+
+- List of OS packages to install
+- Default value: list
+
+### `consul_redhat_pkg`
+
+- Consul package filename
+- Default value: `{{ consul_version }}_linux_amd64.zip`
+
+### `consul_redhat_url`
+
+- Consul package download URL
+- Default value: `{{ consul_zip_url }}`
+
+### `consul_redhat_sha256`
+
+- Consul download SHA256 summary
+- Default value: SHA256 summary
+
+### `consul_redhat_os_packages`
+
+- List of OS packages to install
+- Default value: list
+
+### consul_systemd_restart_sec
+
+- Integer value for systemd unit `RestartSec` option
+- Default value: 42
+
+### consul_systemd_limit_nofile
+
+- Integer value for systemd unit `LimitNOFILE` option
+- Default value: 65536
+
+### consul_systemd_restart
+
+- String value for systemd unit `Restart` option
+- Default value: `on-failure`
+
+### `consul_ubuntu_pkg`
+
+- Consul package filename
+- Default value: `{{ consul_version }}_linux_amd64.zip`
+
+### `consul_ubuntu_url`
+
+- Consul package download URL
+- Default value: `{{ consul_zip_url }}`
+
+### `consul_ubuntu_sha256`
+
+- Consul download SHA256 summary
+- Default value: SHA256 summary
+
+### `consul_ubuntu_os_packages`
+
+- List of OS packages to install
+- Default value: list
+
+### `consul_windows_pkg`
+
+- Consul package filename
+- Default value: `{{ consul_version }}_windows_amd64.zip`
+
+### `consul_windows_url`
+
+- Consul package download URL
+- Default value: `{{ consul_zip_url }}`
+
+### `consul_windows_sha256`
+
+- Consul download SHA256 summary
+- Default value: SHA256 summary
+
+### `consul_windows_os_packages`
+
+- List of OS packages to install
+- Default value: list
+
+### `consul_performance`
+
+- List of Consul performance tuning items
+- Default value: list
+
+#### `raft_multiplier`
+
+- [Raft multiplier](https://www.consul.io/docs/agent/options.html#raft_multiplier) scales key Raft timing parameters
+- Default value: 1
+
+#### `leave_drain_time`
+
+- [Node leave drain time](https://www.consul.io/docs/agent/options.html#leave_drain_time) is the dwell time for a server to honor requests while gracefully leaving
+
+- Default value: 5s
+
+#### `rpc_hold_timeout`
+
+- [RPC hold timeout](https://www.consul.io/docs/agent/options.html#rpc_hold_timeout) is the duration that a client or server will retry internal RPC requests during leader elections
+- Default value: 7s
+
+#### `leave_on_terminate`
+- [leave_on_terminate](https://www.consul.io/docs/agent/options.html#leave_on_terminate) If enabled, when the agent receives a TERM signal, it will send a Leave message to the rest of the cluster and gracefully leave. The default behavior for this feature varies based on whether or not the agent is running as a client or a server. On agents in client-mode, this defaults to true and for agents in server-mode, this defaults to false.
+
+### `consul_limit`
+
+- Consul node limits (key-value)
+- Supported in Consul version 0.9.3 or later
+- Default value: *{}*
+- Example:
+```yaml
+consul_limits:
+    http_max_conns_per_client: 250
+    rpc_max_conns_per_client: 150
+```
+
+## Dependencies
+
+Ansible requires GNU tar and this role performs some local use of the unarchive module for efficiency, so ensure that your system has `gtar` and `unzip` installed and in the PATH. If you don't this role will install `unzip` on the remote machines to unarchive the ZIP files.
+
+If you're on system with a different (i.e. BSD) `tar`, like macOS and you see odd errors during unarchive tasks, you could be missing `gtar`.
+
+Installing Ansible on Windows requires the PowerShell Community Extensions. These already installed on Windows Server 2012 R2 and onward. If you're attempting this role on Windows Server 2008 or earlier, you'll want to install the extensions [here](https://pscx.codeplex.com/).
+
+## Example Playbook
+
+Basic installation is possible using the included `site.yml` playbook:
+
+```
+ansible-playbook -i hosts site.yml
+```
+
+You can also pass variables in using the `--extra-vars` option to the
+`ansible-playbook` command:
+
+```
+ansible-playbook -i hosts site.yml --extra-vars "consul_datacenter=maui"
+```
+
+Be aware that for clustering, the included `site.yml` does the following:
+
+1. Executes consul role (installs Consul and bootstraps cluster)
+2. Reconfigures bootstrap node to run without bootstrap-expect setting
+3. Restarts bootstrap node
+
+### ACL Support
+
+Basic support for ACLs is included in the role. You can set the environment variables `CONSUL_ACL_ENABLE` to true, and also set the `CONSUL_ACL_DATACENTER` environment variable to its correct value for your environment prior to executing your playbook; for example:
+
+```
+CONSUL_ACL_ENABLE=true CONSUL_ACL_DATACENTER=maui \
+CONSUL_ACL_MASTER_TOKEN_DISPLAY=true ansible-playbook -i uat_hosts aloha.yml
+```
+
+If you want the automatically generated ACL Master Token value emitted to standard out during the play, set the environment variable `CONSUL_ACL_MASTER_TOKEN_DISPLAY` to true as in the above example.
+
+If you want to use existing tokens, set the environment variables `CONSUL_ACL_MASTER_TOKEN` and `CONSUL_ACL_REPLICATION_TOKEN` as well, for example:
+
+```
+CONSUL_ACL_ENABLE=true CONSUL_ACL_DATACENTER=stjohn \
+CONSUL_ACL_MASTER_TOKEN=0815C55B-3AD2-4C1B-BE9B-715CAAE3A4B2 \
+CONSUL_ACL_REPLICATION_TOKEN=C609E56E-DD0B-4B99-A0AD-B079252354A0 \
+CONSUL_ACL_MASTER_TOKEN_DISPLAY=true ansible-playbook -i uat_hosts sail.yml
+```
+
+There are a number of Ansible ACL variables you can override to further refine your initial ACL setup. They are not all currently picked up from environment variables, but do have some sensible defaults.
+
+Check `defaults/main.yml` to see how some of he defaults (i.e. tokens) are automatically generated.
+
+### Dnsmasq DNS Forwarding Support
+
+The role now includes support for [DNS forwarding](https://www.consul.io/docs/guides/forwarding.html) with [Dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html).
+
+Enable like this:
+
+```
+ansible-playbook -i hosts site.yml --extra-vars "consul_dnsmasq_enable=true"
+```
+
+Then, you can query any of the agents via DNS directly via port 53,
+for example:
+
+```
+dig @consul1.consul consul3.node.consul
+
+; <<>> DiG 9.8.3-P1 <<>> @consul1.consul consul3.node.consul
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 29196
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;consul3.node.consul.   IN  A
+
+;; ANSWER SECTION:
+consul3.node.consul.  0 IN  A 10.1.42.230
+
+;; Query time: 42 msec
+;; SERVER: 10.1.42.210#53(10.1.42.210)
+;; WHEN: Sun Aug  7 18:06:32 2016
+;;
+```
+
+### `consul_delegate_datacenter_dns`
+- Whether to delegate Consul datacenter DNS domain to Consul
+- Default value: false
+
+### `consul_dnsmasq_enable`
+
+- Whether to install and configure DNS API forwarding on port 53 using DNSMasq
+  - Override with `CONSUL_DNSMASQ_ENABLE` environment variable
+- Default value: false
+
+### `consul_dnsmasq_bind_interfaces`
+
+- Setting this option to _true_ prevents DNSmasq from binding by default 0.0.0.0, but instead instructs it to bind to the specific network interfaces that correspond to the `consul_dnsmasq_listen_addresses` option
+- Default value: false
+
+### `consul_dnsmasq_consul_address`
+
+- Address used by DNSmasq to query consul
+- Default value: `consul_address.dns`
+- Defaults to 127.0.0.1 if consul's DNS is bound to all interfaces (eg `0.0.0.0`)
+
+### `consul_dnsmasq_cache`
+
+- dnsmasq cache-size
+- If smaller then 0, the default dnsmasq setting will be used.
+- Default value: *-1*
+
+### `consul_dnsmasq_servers`
+
+- Upstream DNS servers used by dnsmasq
+- Default value: *8.8.8.8* and *8.8.4.4*
+
+### `consul_dnsmasq_revservers`
+
+- Reverse lookup subnets
+- Default value: *[]*
+
+### `consul_dnsmasq_no_poll`
+
+- Do not poll /etc/resolv.conf
+- Default value: false
+
+### `consul_dnsmasq_no_resolv`
+
+- Ignore /etc/resolv.conf file
+- Default value: false
+
+### `consul_dnsmasq_local_service`
+
+- Only allow requests from local subnets
+- Default value: false
+
+### `consul_dnsmasq_listen_addresses`
+
+- Custom list of addresses to listen on.
+- Default value: *[]*
+
+### `consul_connect_enabled`
+
+- Enable Consul Connect feature
+- Default value: false
+
+### `consul_cleanup_ignore_files`
+
+- List of files to ignore during cleanup steps
+- Default value: *[{{ consul_configd_path }}/consul.env]*
+
+### iptables DNS Forwarding Support
+
+This role can also use iptables instead of Dnsmasq for forwarding DNS queries to Consul. You can enable it like this:
+
+```
+ansible-playbook -i hosts site.yml --extra-vars "consul_iptables_enable=true"
+```
+
+> Note that iptables forwarding and DNSmasq forwarding cannot be used
+> simultaneously and the execution of the role will stop with error if such
+> a configuration is specified.
+
+### TLS Support
+
+You can enable TLS encryption by dropping a CA certificate, server certificate, and server key into the role's `files` directory.
+
+By default these are named:
+
+- `ca.crt` (can be overridden by {{ consul_tls_ca_crt }})
+- `server.crt` (can be overridden by {{ consul_tls_server_crt }})
+- `server.key` (can be overridden by {{ consul_tls_server_key }})
+
+Then either set the environment variable `CONSUL_TLS_ENABLE=true` or use the Ansible variable `consul_tls_enable=true` at role runtime.
+
+### Service management Support
+
+You can create a configuration file for [consul services](https://www.consul.io/docs/agent/services.html).
+Add a list of service in the `consul_services`.
+
+| name            | Required | Type | Default | Comment                            |
+| --------------- | -------- | ---- | ------- | ---------------------------------- |
+| consul_services | False    | List | `[]`    | List of service object (see below) |
+
+Services object:
+
+| name                | Required | Type   | Default | Comment                                                                                                    |
+| ------------------- | -------- | ------ | ------- | ---------------------------------------------------------------------------------------------------------- |
+| name                | True     | string |         | Name of the service                                                                                        |
+| id                  | False    | string |         | Id of the service                                                                                          |
+| tags                | False    | list   |         | List of string tags                                                                                        |
+| address             | False    | string |         | service-specific IP address                                                                                |
+| meta                | False    | dict   |         | Dict of 64 key/values with string semantics                                                                |
+| port                | False    | int    |         | Port of the service                                                                                        |
+| enable_tag_override | False    | bool   |         | enable/disable the anti-entropy feature for the service                                                    |
+| kind                | False    | string |         | identify the service as a Connect proxy instance                                                           |
+| proxy               | False    | dict   |         | [proxy configuration](https://www.consul.io/docs/connect/proxies.html#complete-configuration-example)      |
+| checks              | False    | list   |         | List of [checks configuration](https://www.consul.io/docs/agent/checks.html)                               |
+| connect             | False    | dict   |         | [Connect object configuration](https://www.consul.io/docs/connect/index.html)                              |
+| weights             | False    | dict   |         | [Weight of a service in DNS SRV responses](https://www.consul.io/docs/agent/services.html#dns-srv-weights) |
+| token               | False    | string |         | ACL token to use to register this service                                                                  |
+
+
+Configuration example:
+```yaml
+consul_services:
+  - name: "openshift"
+    tags: ['production']
+  - name: "redis"
+    id: "redis"
+    tags: ['primary']
+    address: ""
+    meta:
+      meta: "for my service"
+    proxy:
+      destination_service_name: "redis"
+      destination_service_id: "redis1"
+      local_service_address: "127.0.0.1"
+      local_service_port: 9090
+      config: {}
+      upstreams:  []
+    checks:
+      - args: ["/home/consul/check.sh"]
+        interval: "10s"
+```
+
+Then you can check that the service is well added to the catalog
+```
+> consul catalog services
+consul
+openshift
+redis
+```
+
+>**Note:** to delete a service that has been added from this role, remove it from the `consul_services` list and apply the role again.
+
+### Vagrant and VirtualBox
+
+See [examples/README_VAGRANT.md](https://github.com/ansible-community/ansible-consul/blob/master/examples/README_VAGRANT.md) for details on quick Vagrant deployments under VirtualBox for development, evaluation, testing, etc.
+
+## License
+
+BSD
+
+## Author Information
+
+[Brian Shumate](http://brianshumate.com)
+
+## Contributors
+
+Special thanks to the folks listed in [CONTRIBUTORS.md](https://github.com/ansible-community/ansible-consul/blob/master/CONTRIBUTORS.md) for their contributions to this project.
+
+Contributions are welcome, provided that you can agree to the terms outlined in [CONTRIBUTING.md](https://github.com/ansible-community/ansible-consul/blob/master/CONTRIBUTING.md).
+
+
+
 ## Role Variables
 
 The role uses variables defined in these 3 places:
@@ -846,438 +1283,3 @@ An example usage for enabling `telemetry`:
           - "compliance"
         disable_hostname: true
 ```
-
-## Consul Snapshot Agent
-
-_Consul snapshot agent takes backup snaps on a set interval and stores them. Must have enterprise_
-
-### `consul_snapshot`
-
-- Bool, true will setup and start snapshot agent (enterprise only)
-- Default value: false
-
-### `consul_snapshot_storage`
-
-- Location snapshots will be stored. NOTE: path must end in snaps
-- Default value: `{{ consul_config_path }}/snaps`
-
-### `consul_snapshot_interval`
-
-- Default value: 1h
-
-### `consul_snapshot_retain`
-
-## OS and Distribution Variables
-
-The `consul` binary works on most Linux platforms and is not distribution
-specific. However, some distributions require installation of specific OS
-packages with different package names.
-
-### `consul_centos_pkg`
-
-- Consul package filename
-- Default value: `{{ consul_version }}_linux_amd64.zip`
-
-### `consul_centos_url`
-
-- Consul package download URL
-- Default value: `{{ consul_zip_url }}`
-
-### `consul_centos_sha256`
-
-- Consul download SHA256 summary
-- Default value: SHA256 summary
-
-### `consul_centos_os_packages`
-
-- List of OS packages to install
-- Default value: list
-
-### `consul_debian_pkg`
-
-- Consul package filename
-- Default value: `{{ consul_version }}_linux_amd64.zip`
-
-### `consul_debian_url`
-
-- Consul package download URL
-- Default value: `{{ consul_zip_url }}`
-
-### `consul_debian_sha256`
-
-- Consul download SHA256 summary
-- Default value: SHA256 SUM
-
-### `consul_debian_os_packages`
-
-- List of OS packages to install
-- Default value: list
-
-### `consul_redhat_pkg`
-
-- Consul package filename
-- Default value: `{{ consul_version }}_linux_amd64.zip`
-
-### `consul_redhat_url`
-
-- Consul package download URL
-- Default value: `{{ consul_zip_url }}`
-
-### `consul_redhat_sha256`
-
-- Consul download SHA256 summary
-- Default value: SHA256 summary
-
-### `consul_redhat_os_packages`
-
-- List of OS packages to install
-- Default value: list
-
-### consul_systemd_restart_sec
-
-- Integer value for systemd unit `RestartSec` option
-- Default value: 42
-
-### consul_systemd_limit_nofile
-
-- Integer value for systemd unit `LimitNOFILE` option
-- Default value: 65536
-
-### consul_systemd_restart
-
-- String value for systemd unit `Restart` option
-- Default value: `on-failure`
-
-### `consul_ubuntu_pkg`
-
-- Consul package filename
-- Default value: `{{ consul_version }}_linux_amd64.zip`
-
-### `consul_ubuntu_url`
-
-- Consul package download URL
-- Default value: `{{ consul_zip_url }}`
-
-### `consul_ubuntu_sha256`
-
-- Consul download SHA256 summary
-- Default value: SHA256 summary
-
-### `consul_ubuntu_os_packages`
-
-- List of OS packages to install
-- Default value: list
-
-### `consul_windows_pkg`
-
-- Consul package filename
-- Default value: `{{ consul_version }}_windows_amd64.zip`
-
-### `consul_windows_url`
-
-- Consul package download URL
-- Default value: `{{ consul_zip_url }}`
-
-### `consul_windows_sha256`
-
-- Consul download SHA256 summary
-- Default value: SHA256 summary
-
-### `consul_windows_os_packages`
-
-- List of OS packages to install
-- Default value: list
-
-### `consul_performance`
-
-- List of Consul performance tuning items
-- Default value: list
-
-#### `raft_multiplier`
-
-- [Raft multiplier](https://www.consul.io/docs/agent/options.html#raft_multiplier) scales key Raft timing parameters
-- Default value: 1
-
-#### `leave_drain_time`
-
-- [Node leave drain time](https://www.consul.io/docs/agent/options.html#leave_drain_time) is the dwell time for a server to honor requests while gracefully leaving
-
-- Default value: 5s
-
-#### `rpc_hold_timeout`
-
-- [RPC hold timeout](https://www.consul.io/docs/agent/options.html#rpc_hold_timeout) is the duration that a client or server will retry internal RPC requests during leader elections
-- Default value: 7s
-
-#### `leave_on_terminate`
-- [leave_on_terminate](https://www.consul.io/docs/agent/options.html#leave_on_terminate) If enabled, when the agent receives a TERM signal, it will send a Leave message to the rest of the cluster and gracefully leave. The default behavior for this feature varies based on whether or not the agent is running as a client or a server. On agents in client-mode, this defaults to true and for agents in server-mode, this defaults to false.
-
-### `consul_limit`
-
-- Consul node limits (key-value)
-- Supported in Consul version 0.9.3 or later
-- Default value: *{}*
-- Example:
-```yaml
-consul_limits:
-    http_max_conns_per_client: 250
-    rpc_max_conns_per_client: 150
-```
-
-## Dependencies
-
-Ansible requires GNU tar and this role performs some local use of the unarchive module for efficiency, so ensure that your system has `gtar` and `unzip` installed and in the PATH. If you don't this role will install `unzip` on the remote machines to unarchive the ZIP files.
-
-If you're on system with a different (i.e. BSD) `tar`, like macOS and you see odd errors during unarchive tasks, you could be missing `gtar`.
-
-Installing Ansible on Windows requires the PowerShell Community Extensions. These already installed on Windows Server 2012 R2 and onward. If you're attempting this role on Windows Server 2008 or earlier, you'll want to install the extensions [here](https://pscx.codeplex.com/).
-
-## Example Playbook
-
-Basic installation is possible using the included `site.yml` playbook:
-
-```
-ansible-playbook -i hosts site.yml
-```
-
-You can also pass variables in using the `--extra-vars` option to the
-`ansible-playbook` command:
-
-```
-ansible-playbook -i hosts site.yml --extra-vars "consul_datacenter=maui"
-```
-
-Be aware that for clustering, the included `site.yml` does the following:
-
-1. Executes consul role (installs Consul and bootstraps cluster)
-2. Reconfigures bootstrap node to run without bootstrap-expect setting
-3. Restarts bootstrap node
-
-### ACL Support
-
-Basic support for ACLs is included in the role. You can set the environment variables `CONSUL_ACL_ENABLE` to true, and also set the `CONSUL_ACL_DATACENTER` environment variable to its correct value for your environment prior to executing your playbook; for example:
-
-```
-CONSUL_ACL_ENABLE=true CONSUL_ACL_DATACENTER=maui \
-CONSUL_ACL_MASTER_TOKEN_DISPLAY=true ansible-playbook -i uat_hosts aloha.yml
-```
-
-If you want the automatically generated ACL Master Token value emitted to standard out during the play, set the environment variable `CONSUL_ACL_MASTER_TOKEN_DISPLAY` to true as in the above example.
-
-If you want to use existing tokens, set the environment variables `CONSUL_ACL_MASTER_TOKEN` and `CONSUL_ACL_REPLICATION_TOKEN` as well, for example:
-
-```
-CONSUL_ACL_ENABLE=true CONSUL_ACL_DATACENTER=stjohn \
-CONSUL_ACL_MASTER_TOKEN=0815C55B-3AD2-4C1B-BE9B-715CAAE3A4B2 \
-CONSUL_ACL_REPLICATION_TOKEN=C609E56E-DD0B-4B99-A0AD-B079252354A0 \
-CONSUL_ACL_MASTER_TOKEN_DISPLAY=true ansible-playbook -i uat_hosts sail.yml
-```
-
-There are a number of Ansible ACL variables you can override to further refine your initial ACL setup. They are not all currently picked up from environment variables, but do have some sensible defaults.
-
-Check `defaults/main.yml` to see how some of he defaults (i.e. tokens) are automatically generated.
-
-### Dnsmasq DNS Forwarding Support
-
-The role now includes support for [DNS forwarding](https://www.consul.io/docs/guides/forwarding.html) with [Dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html).
-
-Enable like this:
-
-```
-ansible-playbook -i hosts site.yml --extra-vars "consul_dnsmasq_enable=true"
-```
-
-Then, you can query any of the agents via DNS directly via port 53,
-for example:
-
-```
-dig @consul1.consul consul3.node.consul
-
-; <<>> DiG 9.8.3-P1 <<>> @consul1.consul consul3.node.consul
-; (1 server found)
-;; global options: +cmd
-;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 29196
-;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
-
-;; QUESTION SECTION:
-;consul3.node.consul.   IN  A
-
-;; ANSWER SECTION:
-consul3.node.consul.  0 IN  A 10.1.42.230
-
-;; Query time: 42 msec
-;; SERVER: 10.1.42.210#53(10.1.42.210)
-;; WHEN: Sun Aug  7 18:06:32 2016
-;;
-```
-
-### `consul_delegate_datacenter_dns`
-- Whether to delegate Consul datacenter DNS domain to Consul
-- Default value: false
-
-### `consul_dnsmasq_enable`
-
-- Whether to install and configure DNS API forwarding on port 53 using DNSMasq
-  - Override with `CONSUL_DNSMASQ_ENABLE` environment variable
-- Default value: false
-
-### `consul_dnsmasq_bind_interfaces`
-
-- Setting this option to _true_ prevents DNSmasq from binding by default 0.0.0.0, but instead instructs it to bind to the specific network interfaces that correspond to the `consul_dnsmasq_listen_addresses` option
-- Default value: false
-
-### `consul_dnsmasq_consul_address`
-
-- Address used by DNSmasq to query consul
-- Default value: `consul_address.dns`
-- Defaults to 127.0.0.1 if consul's DNS is bound to all interfaces (eg `0.0.0.0`)
-
-### `consul_dnsmasq_cache`
-
-- dnsmasq cache-size
-- If smaller then 0, the default dnsmasq setting will be used.
-- Default value: *-1*
-
-### `consul_dnsmasq_servers`
-
-- Upstream DNS servers used by dnsmasq
-- Default value: *8.8.8.8* and *8.8.4.4*
-
-### `consul_dnsmasq_revservers`
-
-- Reverse lookup subnets
-- Default value: *[]*
-
-### `consul_dnsmasq_no_poll`
-
-- Do not poll /etc/resolv.conf
-- Default value: false
-
-### `consul_dnsmasq_no_resolv`
-
-- Ignore /etc/resolv.conf file
-- Default value: false
-
-### `consul_dnsmasq_local_service`
-
-- Only allow requests from local subnets
-- Default value: false
-
-### `consul_dnsmasq_listen_addresses`
-
-- Custom list of addresses to listen on.
-- Default value: *[]*
-
-### `consul_connect_enabled`
-
-- Enable Consul Connect feature
-- Default value: false
-
-### `consul_cleanup_ignore_files`
-
-- List of files to ignore during cleanup steps
-- Default value: *[{{ consul_configd_path }}/consul.env]*
-
-### iptables DNS Forwarding Support
-
-This role can also use iptables instead of Dnsmasq for forwarding DNS queries to Consul. You can enable it like this:
-
-```
-ansible-playbook -i hosts site.yml --extra-vars "consul_iptables_enable=true"
-```
-
-> Note that iptables forwarding and DNSmasq forwarding cannot be used
-> simultaneously and the execution of the role will stop with error if such
-> a configuration is specified.
-
-### TLS Support
-
-You can enable TLS encryption by dropping a CA certificate, server certificate, and server key into the role's `files` directory.
-
-By default these are named:
-
-- `ca.crt` (can be overridden by {{ consul_tls_ca_crt }})
-- `server.crt` (can be overridden by {{ consul_tls_server_crt }})
-- `server.key` (can be overridden by {{ consul_tls_server_key }})
-
-Then either set the environment variable `CONSUL_TLS_ENABLE=true` or use the Ansible variable `consul_tls_enable=true` at role runtime.
-
-### Service management Support
-
-You can create a configuration file for [consul services](https://www.consul.io/docs/agent/services.html).
-Add a list of service in the `consul_services`.
-
-| name            | Required | Type | Default | Comment                            |
-| --------------- | -------- | ---- | ------- | ---------------------------------- |
-| consul_services | False    | List | `[]`    | List of service object (see below) |
-
-Services object:
-
-| name                | Required | Type   | Default | Comment                                                                                                    |
-| ------------------- | -------- | ------ | ------- | ---------------------------------------------------------------------------------------------------------- |
-| name                | True     | string |         | Name of the service                                                                                        |
-| id                  | False    | string |         | Id of the service                                                                                          |
-| tags                | False    | list   |         | List of string tags                                                                                        |
-| address             | False    | string |         | service-specific IP address                                                                                |
-| meta                | False    | dict   |         | Dict of 64 key/values with string semantics                                                                |
-| port                | False    | int    |         | Port of the service                                                                                        |
-| enable_tag_override | False    | bool   |         | enable/disable the anti-entropy feature for the service                                                    |
-| kind                | False    | string |         | identify the service as a Connect proxy instance                                                           |
-| proxy               | False    | dict   |         | [proxy configuration](https://www.consul.io/docs/connect/proxies.html#complete-configuration-example)      |
-| checks              | False    | list   |         | List of [checks configuration](https://www.consul.io/docs/agent/checks.html)                               |
-| connect             | False    | dict   |         | [Connect object configuration](https://www.consul.io/docs/connect/index.html)                              |
-| weights             | False    | dict   |         | [Weight of a service in DNS SRV responses](https://www.consul.io/docs/agent/services.html#dns-srv-weights) |
-| token               | False    | string |         | ACL token to use to register this service                                                                  |
-
-
-Configuration example:
-```yaml
-consul_services:
-  - name: "openshift"
-    tags: ['production']
-  - name: "redis"
-    id: "redis"
-    tags: ['primary']
-    address: ""
-    meta:
-      meta: "for my service"
-    proxy:
-      destination_service_name: "redis"
-      destination_service_id: "redis1"
-      local_service_address: "127.0.0.1"
-      local_service_port: 9090
-      config: {}
-      upstreams:  []
-    checks:
-      - args: ["/home/consul/check.sh"]
-        interval: "10s"
-```
-
-Then you can check that the service is well added to the catalog
-```
-> consul catalog services
-consul
-openshift
-redis
-```
-
->**Note:** to delete a service that has been added from this role, remove it from the `consul_services` list and apply the role again.
-
-### Vagrant and VirtualBox
-
-See [examples/README_VAGRANT.md](https://github.com/ansible-community/ansible-consul/blob/master/examples/README_VAGRANT.md) for details on quick Vagrant deployments under VirtualBox for development, evaluation, testing, etc.
-
-## License
-
-BSD
-
-## Author Information
-
-[Brian Shumate](http://brianshumate.com)
-
-## Contributors
-
-Special thanks to the folks listed in [CONTRIBUTORS.md](https://github.com/ansible-community/ansible-consul/blob/master/CONTRIBUTORS.md) for their contributions to this project.
-
-Contributions are welcome, provided that you can agree to the terms outlined in [CONTRIBUTING.md](https://github.com/ansible-community/ansible-consul/blob/master/CONTRIBUTING.md).
